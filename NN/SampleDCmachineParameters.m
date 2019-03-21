@@ -10,7 +10,7 @@
 clc; clear all;
 
 m = 0.1; % kg
-l = 0.6; % 0.05 m
+l = 0.6; % m
 R = 5;   % Ohms
 V = 5;   % volts
 B = 0.2; 
