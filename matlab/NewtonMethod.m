@@ -8,19 +8,26 @@ clc; clear all;
 m = 0.1;                                            % kg
 B = 0.2;                                            % Telsa
 l = 1;                                              % m
-R = 5;                                              % Ohms
-Vs = [-20:0.1:20]';                                 % volts (input range)
+R = 0.2;                                            % Ohms
+%Vs = [-20:0.1:20]';                                % volts (input range)
+Vs = 15
 f = 0.01;                                           % friction coefficient
 
-% Modelling
+% Modelling in terms of displacement
 syms s t
 num = 1;                                            % numerator of TF
-s1 = l.*B + f.*R./(l.*B);                           % s term of 2nd order ODE
+%s1 = l.*B + f.*R./(l.*B);                          % s term of 2nd order ODE
+s1 = l.*B;                                          % Without friction
 s2 = m.*(R./(l.*B));                                % s^2 term of 2nd order ODE
 sden = s2.*(s.*s) + s1.*s ;                         % denominator of TF
-
-sys = num./sden;                                    % TF as symbolic function
+sys = num./sden                                     % TF as symbolic function
 X = Vs.*sys;                                        % output = input * TF
+
+% Modelling in terms of velocity
+% num = 1;
+% sden = s2.*(s) + s1;
+% sys = num./sden
+% velocity = Vs.*sys;
 
 % Simulink
 den = sym2poly(sden);
