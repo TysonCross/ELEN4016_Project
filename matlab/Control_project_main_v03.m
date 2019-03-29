@@ -20,7 +20,7 @@ sden = s2.*(s.*s) + s1.*s ;                         % denominator of TF
 sys = num./sden;                                    % TF as symbolic function
 % X = V.*sys;                                       % output = input * TF
 den = sym2poly(sden);
-system = tf(num, den);
+system = tf(num, den)
 rlocus(system);
 poles=eig(system);
 
@@ -69,9 +69,16 @@ PIDsystem = P + I/s + D*(N/(1+(N/s)));                          % controller tra
  MotorV = (ilaplace(controllerEffort,t));
  MotorC = MotorV./R;                                            %Current in the motor 
  MotorP = MotorC.*MotorV;                                        %instantanious Power
- MotorCE3 = double(int(MotorP,t,0,3))
-% MotorCE = int(MotorP,t,0,t,'PrincipalValue',true);
-%                                                               %Motor cumulative energy
+ MotorCE3 = double(int(abs(MotorP),t,0,4))
+ %MotorCE = int(MotorP,t,0,t,'PrincipalValue',true);               %Motor cumulative energy
+                                                               
+
+ T = 0:0.001:4;                                                   %Time matrix 
+ MotorVmatrix = abs(double(subs(MotorV,t,T)));                               %voltage sampled at T
+ MotorCmatrix = abs(MotorVmatrix./R);                                %
+ MotorPmatrix = MotorCmatrix.*MotorVmatrix;
+ MotorCEmatrix = cumsum(MotorPmatrix.*0.001);
+ 
 %                                                               
 % %Calculate the increase in resistace due to increase in temperature. 
 % deltaT = subs(MotorCE,t,3)/(0.385*0.75264);
