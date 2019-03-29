@@ -2,7 +2,7 @@
 clear all;
 
 time_delta = 0.1;
-voltage_steps = 0.5;
+voltage_steps = 0.1;
 V = [-50:voltage_steps:50];                     % volts (input range)
 t = [0:time_delta:10]';                         % time series input
 
@@ -31,14 +31,17 @@ for i = 1:length(V)
     out_temp(:,i) = output.Data;
 end
 
+clear output
+
+output = timeseries(out_temp,t);
+
 % after simulation
 in_NN_data = v_input;
 out_NN_data = out_temp;
+training_data = {v_input,out_temp};
 
-clear b B B2 B3 f i l m R input output out_temp model T t time_delta tout V v_1 v_2 v_input voltage_steps
+clear b B B2 B3 f i l m R model T t time_delta tout V v_1 v_2
+clear v_input voltage_steps out_temp
+
 disp("Data generated")
 beep;
-
-% plot(t,in_NN_data(:,2));
-% hold on;
-% plot(t,out_NN_data)
