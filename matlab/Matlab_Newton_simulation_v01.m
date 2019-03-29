@@ -5,11 +5,11 @@
 clc; clear all;
 
 % System Parameters
-m = 0.1;                                            % kg
+m = 0.04;                                            % kg
 B = 0.5;                                            % Telsa
 l = 0.1;                                            % m
 R = 1;                                              % Ohms
-V = [-100:0.5:100]';                                  % volts (input range)
+V = [-100:0.5:100]';                                % volts (input range)
 f = 0.01;                                           % friction coefficient
 
 
@@ -34,6 +34,7 @@ tau = 1;
 [A1,B1,C1,D1] = ssdata(system);                     % two state variables
 rank_sys = rank(ctrb(A1,B1));
 obs_sys = obsv(A1,C1);
+rank_obs = rank(obs_sys);
 
 % % Solution
 % xt = ilaplace(X);                                   % inverse laplace
