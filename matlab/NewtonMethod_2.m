@@ -16,12 +16,12 @@ f = 0.01;                                           % friction coefficient
 % Modelling in terms of displacement
 syms s t
 num = 1;                                            % numerator of TF
-s1 = l.*B + f.*R./(l.*B);                          % s term of 2nd order ODE
-%s1 = l.*B;                                          % Without friction
+s1 = l.*B + f.*R./(l.*B);                           % s term of 2nd order ODE
+%s1 = l.*B;                                         % Without friction
 s2 = m.*(R./(l.*B));                                % s^2 term of 2nd order ODE
 sden = s2.*(s.*s) + s1.*s ;                         % denominator of TF
-sys = num./sden                                     % TF as symbolic function
-%X = Vs.*sys;                                        % output = input * TF
+sys = num./sden;                                    % TF as symbolic function
+%X = Vs.*sys;                                       % output = input * TF
 
 % Modelling in terms of velocity
 % num = 1;
@@ -31,13 +31,13 @@ sys = num./sden                                     % TF as symbolic function
 
 
 % Simulink
-den = sym2poly(sden);
-system = tf(num, den);
+den = sym2poly(sden);                               % Used in the simulink block diagram
+system = tf(num, den);                              
 %rlocus(system);
-%tau = 1;
+
 
 % Modelling of PID controller
- P = 0.159243539750473;
+ P = 0.159243539750473;                             
  I = 0.0209333117982786;
  D = 0.242558878110515;
  N = 20.119;
