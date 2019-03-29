@@ -4,7 +4,7 @@
 
 clc; clear all;
 
-system_parameters;
+System_parameters;
 
 %%% Newtonian Modelling (i.t.o displacement)
 syms s t
@@ -19,6 +19,10 @@ sden = s2.*(s.*s) + s1.*s ;                         % denominator of TF
 
 sys = num./sden;                                    % TF as symbolic function
 % X = V.*sys;                                       % output = input * TF
+den = sym2poly(sden);
+system = tf(num, den);
+rlocus(system);
+poles=eig(system);
 
 % state space
 [A1,B1,C1,D1] = ssdata(system);                     % two state variables
@@ -39,13 +43,7 @@ rank_obs = rank(obs_sys);
 % xSol(t) = dsolve(ode,conds);
 % xsol = simplify(xSol)
 
-%%% Simulink
-den = sym2poly(sden);
-system = tf(num, den);
-rlocus(system);
-poles=eig(system);
-
-%% Control_system_simulation.slx
+%%% Simulink: Control_system_simulation.slx
 
 % Modelling of PID controller (Tuned)
  P = 0.159243539750473;                                         % proportional 

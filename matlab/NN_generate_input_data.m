@@ -1,7 +1,7 @@
 % % Data generation for NN
 
 V = [-100:0.5:100]';                                    % volts (input range)
-t = linspace(0,10,length(V));                          % time series input
+t = linspace(0,10,length(V));                           % time series input
 
 % NN parameters
 b = f;
