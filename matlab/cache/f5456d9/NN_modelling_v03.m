@@ -1,24 +1,22 @@
 %%% Data generation for NN
-set(0,'ShowHiddenHandles','on'); delete(get(0,'Children')); % close windows
 clear all; clc;
 
 % NN parameters
 System_parameters;
 
 % Phases to run
-use_cached_data = false;         % if false, generate new data
-use_cached_net = false;          % if false, generate new NARX net
+use_cached_data = true;        % if false, generate new data
+use_cached_net = true;         % if false, generate new NARX net
 do_train = true;                % if true, perform training
 recover_checkpoint = true;      % if training did not finish, use checkpoint
-archive_net = false;              % archive NN, data dn figures to subfolder
 
 %% Data generation phase
 if (use_cached_data==false)
     disp('Generating and caching data...')
     
     time_step = 0.1;
-    voltage_step = 0.05;
-    voltage = [0:voltage_step:10];              % volts (input range)
+    voltage_step = 0.01;
+    voltage = [0:voltage_step:1];              % volts (input range)
     t = [0:time_step:20]';                      % time series input
 
     % create matrix input
@@ -45,10 +43,14 @@ if (use_cached_data==false)
     out_NN_data = out_temp;
     
     % report sizes:
-    fprintf("Data set of %d entries \n", numel(out_NN_data));
+    msg = ["Data set of " num2str(numel(out_NN_data)) " entries"];
+    disp(msg)
     [a,b] = size(out_NN_data);
-    fprintf("Data consists of %d timesteps of %d elements\n",a,b);
-   
+    msg = ["Data consists of '" num2str(a) ...
+        " timesteps of '" num2str(b) " elements"];
+    disp(msg)
+    disp(' ')
+    
     save('cache/IO_data',...
         'in_NN_data','out_NN_data',...
         'time_step','t', 'voltage_step', 'voltage', 'model');
@@ -67,33 +69,39 @@ if (use_cached_net==false)
     in_NN_data = con2seq(in_NN_data);
     out_NN_data = con2seq(out_NN_data);
 
-%     % segment_data (and randomise sequence order)
-%     numelements = round(0.8*length(in_NN_data));
-%     indices = randperm(length(in_NN_data));
-%     indices_main = indices(1:numelements);
-%     indices_new = indices(numelements:end);
-% 
-%     in_train_data = in_NN_data(indices_main);
-%     target_train_data = out_NN_data(indices_main);
-%     in_new_data = in_NN_data(indices_new);
-%     target_new_data = out_NN_data(indices_new);
+    % segment_data (and randomise sequence order)
+    numelements = round(0.8*length(in_NN_data));
+    indices = randperm(length(in_NN_data));
+    indices_main = indices(1:numelements);
+    indices_new = indices(numelements:end);
 
-    fprintf("NARX net has input size: %d \n", numel(t));
-    fprintf("Training set: %d sequences \n",round(0.8*numel(out_NN_data(:))));
-    fprintf("Testing set: %d sequences \n",round(0.2*numel(out_NN_data(:))));
+    in_train_data = in_NN_data(indices_main);
+    target_train_data = out_NN_data(indices_main);
+    in_new_data = in_NN_data(indices_new);
+    target_new_data = out_NN_data(indices_new);
+
+    msg = ["NARX net has input size: " num2str(numel(t))];
+    disp(msg)
+    msg = ["Training set of " num2str(round(0.8*numel(out_NN_data(:)))) ...
+            " sequences"];
+    disp(msg)
+    msg = ["Testing set of " num2str(round(0.2*numel(out_NN_data(:)))) ...
+            " sequences"]; 
+    disp()
+    
     trained_status = false;
 
     % NN setup
     delayin = 0:1;
     delaytarget = 1:2;
-    hiddenlayers = 3;
+    hiddenlayers = 10;
     net = narxnet(delayin,delaytarget,hiddenlayers);
     net.divideFcn = 'divideblock';
     net.divideParam.trainRatio = 85/100;
     net.divideParam.valRatio = 10/100;
     net.divideParam.testRatio = 5/100;
     [inputs,feedbackDelays,layerStates,targets] = ...
-        preparets(net,in_NN_data,{},target_train_data);
+        preparets(net,in_train_data,{},target_train_data);
 
     save('cache/NN_model',...
         'inputs','feedbackDelays','layerStates','targets',...
@@ -115,7 +123,7 @@ end
 %% Training phase
 if ((trained_status==false) || (do_train))
     disp("Training NARX net (open loop)")
-    training_complete = false;
+    
     if (recover_checkpoint==true)
         if exist('cache/checkpoint.mat','file') == 2
             load('cache/checkpoint.mat');
@@ -131,27 +139,22 @@ if ((trained_status==false) || (do_train))
     net.trainParam.epochs = 1500;
     net.trainParam.show = 10;
     net.trainParam.min_grad = 1e-10;
-    net.trainParam.max_fail = 20;
-%     net.plotFcns = {'plotperform','plottrainstate','plotresponse', ...
-%         'ploterrcorr', 'plotinerrcorr'};
-    [net,TR] = train(net,inputs,targets,feedbackDelays,...
-        'useParallel','yes',...
-        'CheckpointFile','cache/checkpoint.mat');
+    net.plotFcns = {'plotperform','plottrainstate','plotresponse', ...
+        'ploterrcorr', 'plotinerrcorr'};
+    net = train(net,inputs,targets,feedbackDelays,'CheckpointFile','cache/checkpoint.mat');
+    
     beep;
     disp("Training complete")
     trained_status = true;
-    if strcmp(TR.stop,"User stop.")==false
-        training_complete = true;
-    end
     if exist('cache/checkpoint.mat','file') == 2
         delete cache/checkpoint.mat;
     end
     
     save('cache/NN_model','inputs','feedbackDelays','layerStates','targets',...
-        'in_NN_data','out_NN_data','TR',...
+        'in_NN_data','out_NN_data',...
         'in_train_data','target_train_data',...
         'in_new_data','target_new_data',...
-        'trained_status','training_complete','net');
+        'trained_status','net');
     disp('Cached trained NARX net')
 else
     load('cache/NN_model')
@@ -165,81 +168,43 @@ yp = sim(net,inputs,feedbackDelays);
 e = cell2mat(yp)-cell2mat(targets);
 % [~, max_index] = max(max(e));
     
-figError = figure();
-set(figError,'name','Error between NN output and known output');
+fig10 = figure(10);
+set(fig10,'name','Error between NN output and known output');
 % plot(e(:,max_index),'r');
 plot(e,'r');
-title('Error between NN output and known output');
-
-figErrorHist = figure();
-ploterrhist(e)
 
 % close the loop
 narx_net_closed = closeloop(net);
 
-%%Test the NARX net
+view(narx_net_closed)
+
+%%Test the Network
 [inputs_test,inputStates_test,layerStates_test,targets_test] = ...
     preparets(narx_net_closed,in_new_data,{},target_new_data);
 outputs_test = narx_net_closed(inputs_test,inputStates_test,layerStates_test);
-errors_test = gsubtract(targets_test,outputs_test);
-performance_test = perform(narx_net_closed,targets_test,outputs_test)
-
-figErrorTest = figure()
-plot(cell2mat(errors_test),'r')
-title('Error between NN output and new (unknown) output');
+errors = gsubtract(targets_test,outputs_test);
+performance = perform(narx_net_closed,targets_test,outputs_test)
 
 
-figOutput = figure();
-set(figOutput,'name','Output from NN and BlackBox');
-axOutput = axes(figOutput)
-plot(axOutput,t,cell2mat(outputs_test),'r');
+fig11 = figure(11);
+set(fig11,'name','Output from NN and BlackBox');
+ax11 = axes(fig11);
+plot(ax11,t,cell2mat(outputs_test),'r');
 hold on;
-plot(axOutput,t,cell2mat(target_new_data),'b');
+plot(ax11,t,cell2mat(target_new_data),'b');
 hold on
-plot(axOutput,t,cell2mat(targets_test),'g');
-hold on
-title('Output from NN and BlackBox');
-
-figPerform = figure()
-plotperform(TR);
-figTrainState = figure()
-plottrainstate(TR);
-figErrors = figure()
-plot(cell2mat(errors_test));
-figReggression = figure()
-plotregression(targets,outputs)
+plot(ax11,t,cell2mat(targets_test),'g');
+% plotresponse(cell2mat(t2),cell2mat(yp1))
 
 clear max_val max_index 
-
-jframe = view(narx_net_closed);
-hFig = figure('Menubar','none', 'Position',[100 100 565 166]);
-jpanel = get(jframe,'ContentPane');
-[~,h] = javacomponent(jpanel);
-set(h, 'units','normalized', 'position',[0 0 1 1])
-%# close java window
-jframe.setVisible(false);
-jframe.dispose();
-
+% gensim(narx_net_closed,time_step);
+% view(net);
+% view(net_closed);
 
 %% Save metadata, caches and matlab script
-if (archive_net) && (training_complete)
-   foldername = mlreportgen.utils.hash(string(datetime('now')))
-   foldername = strcat("cache/", extractBefore(foldername,8));
-   mkdir(foldername)
-   copyfile('NN_modelling_v03.m',foldername)
-   copyfile('cache/NN_model.mat',foldername)
-   copyfile('cache/IO_data.mat',foldername)
-   figHandles = findobj('Type', 'figure');
-   for i=1:length(figHandles)
-        figure(figHandles(i).Number);
-        fn = sprintf('%s/fig%s.eps',foldername,num2str(i));
-        export_fig(fn,figHandles(i))
-   end
-   gensim(narx_net_closed,time_step);
-   fn = sprintf('%s/narx.slx',foldername);
-   save_system(gcs,fn)
-   bdclose(gcs)
-   disp(sprintf("Data archived in %s",foldername))
-else
-    disp("WARNING: output NARX data not archived")
+if save_data
+   f = mlreportgen.utils.hash(string(datetime('now')))
+   f = strcat("cache/", extractBefore(f,8));
+   mkdir(f)
+   copyfile('NN_modelling_v03.m',f)
 end
