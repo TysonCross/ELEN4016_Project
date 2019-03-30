@@ -7,6 +7,7 @@ System_parameters;
 % phases to run
 use_cached_data = false;
 use_cached_net = false;
+recover_checkpoint = false; % if training did not finish, use checkpoint
 do_train = true;
 
 % generate data
@@ -14,9 +15,9 @@ if (use_cached_data==false)
     disp('Generating and caching data...')
     
     time_step = 0.1;
-    voltage_step = 0.05;
-    voltage = [0:voltage_step:10];              % volts (input range)
-    t = [0:time_step:10]';                      % time series input
+    voltage_step = 0.01;
+    voltage = [0:voltage_step:1];              % volts (input range)
+    t = [0:time_step:20]';                      % time series input
 
     % create matrix input
     v_1 = zeros(1,length(voltage));
@@ -59,9 +60,7 @@ else
     disp('Loaded IO data from cache...')
 end
 
-% clear b B B2 B3 f i l m R  T time_steps time_delta V model
-
-% create NN
+% create NN phase
 if (use_cached_net==false)
     disp("Creating NARX net...")
 
@@ -69,7 +68,7 @@ if (use_cached_net==false)
     in_NN_data = con2seq(in_NN_data);
     out_NN_data = con2seq(out_NN_data);
 
-    % segment_data
+    % segment_data (and randomise sequence order)
     numelements = round(0.8*length(in_NN_data));
     indices = randperm(length(in_NN_data));
     indices_main = indices(1:numelements);
@@ -78,7 +77,7 @@ if (use_cached_net==false)
     in_train_data = in_NN_data(indices_main);
     target_train_data = out_NN_data(indices_main);
     in_new_data = in_NN_data(indices_new);
-    out_new_data = out_NN_data(indices_new);
+    target_new_data = out_NN_data(indices_new);
 
     disp(strcat({'NARX net has input size: '}, ...
             num2str(numel(t))))
@@ -91,26 +90,23 @@ if (use_cached_net==false)
     
     trained_status = false;
 
-    % setup
-    delayin = 1:1;
-    delaytarget = 1:1;
-    hiddenlayers = 1;
+    % NN setup
+    delayin = 0:1;
+    delaytarget = 1:2;
+    hiddenlayers = 10;
     net = narxnet(delayin,delaytarget,hiddenlayers);
-    net.divideFcn = '';
-    net.trainFcn =  'trainlm'; 
-%     net.trainParam.mu_dec = 0.05;
-%     net.trainParam.mu = 0.01;
-    net.trainParam.show = 10;
-%     net.trainParam.min_grad = 1e-8;
-%     net.trainParam.lr = 0.1; % 0.01 is default
-    net.plotFcns = {'plotperform','plottrainstate','plotresponse', ...
-        'ploterrcorr', 'plotinerrcorr'};
-    [p1,Pi1,Ai1,t1] = preparets(net,in_train_data,{},target_train_data);
+    net.divideFcn = 'divideblock';
+    net.divideParam.trainRatio = 85/100;
+    net.divideParam.valRatio = 10/100;
+    net.divideParam.testRatio = 5/100;
+    [inputs,feedbackDelays,layerStates,targets] = ...
+        preparets(net,in_train_data,{},target_train_data);
 
-    save('cache/NN_model','p1','Pi1','Ai1','t1',...
+    save('cache/NN_model',...
+        'inputs','feedbackDelays','layerStates','targets',...
         'in_NN_data','out_NN_data',...
         'in_train_data','target_train_data',...
-        'in_new_data','out_new_data',...
+        'in_new_data','target_new_data',...
         'trained_status','net');
     clear numelements indices indices indices_new indices_main
     disp('Cached untrained NARX net')
@@ -123,21 +119,34 @@ else
     end
 end
 
-% if (do_train==false)
-%     disp("Training is OFF, stopping")
-%     return;
-%     beep;
-% end
+if (recover_checkpoint==true)
+    load('cache/checkpoint.mat');
+    disp("Recovered last checkpoint")
+    [inputs,feedbackDelays,layerStates,targets] = ...
+        preparets(net,in_train_data,{},target_train_data);
+    beep;
+end
 
 % training
 if ((trained_status==false) || (do_train))
     disp("Training NARX net (open loop)")
-    net = train(net,p1,t1,Pi1);
+    
+    net.trainFcn =  'trainlm';
+    net.trainParam.epochs = 1500;
+    net.trainParam.show = 10;
+    net.trainParam.min_grad = 1e-10;
+    net.plotFcns = {'plotperform','plottrainstate','plotresponse', ...
+        'ploterrcorr', 'plotinerrcorr'};
+    net = train(net,inputs,targets,feedbackDelays,'CheckpointFile','cache/checkpoint.mat');
+    
     beep;
     disp("Training complete")
-    trained_status = true;    
+    trained_status = true;
+    if exist('cache/checkpoint.mat','file') == 2
+        delete cache/checkpoint.mat;
+    end
     
-    save('cache/NN_model','p1','Pi1','Ai1','t1',...
+    save('cache/NN_model','x1','xi1','Ai1','t1',...
         'in_NN_data','out_NN_data',...
         'in_train_data','target_train_data',...
         'in_new_data','out_new_data',...
@@ -148,27 +157,38 @@ else
     disp('Trained NARX net loaded from cache...')
 end
     
-    % simulate the network and plot the resulting errors 
-    yp = sim(net,p1,Pi1);
-    e = cell2mat(yp)-cell2mat(t1);
-    [~, max_index] = max(max(e));
+% simulate the network and plot the resulting errors 
+yp = sim(net,inputs,feedbackDelays);
+e = cell2mat(yp)-cell2mat(targets);
+% [~, max_index] = max(max(e));
     
 fig10 = figure(10);
 set(fig10,'name','Error between NN output and known output');
-plot(e(:,max_index),'r');
+% plot(e(:,max_index),'r');
+plot(e,'r');
 
-    % close the loop
-    narx_net_closed = closeloop(net);
-    
-    [p3,Pi3,Ai3,t3] = preparets(narx_net_closed,in_new_data,{},out_new_data);
-    yp1 = narx_net_closed(p3,Pi3,Ai3);
+% close the loop
+narx_net_closed = closeloop(net);
+
+view(narx_net_closed)
+
+%%Test the Network
+[inputs_test,inputStates_test,layerStates_test,targets_test] = ...
+    preparets(narx_net_closed,in_new_data,{},target_new_data);
+outputs_test = narx_net_closed(inputs_test,inputStates_test,layerStates_test);
+errors = gsubtract(targets_test,outputs_test);
+performance = perform(narx_net_closed,targets_test,outputs_test)
+
 
 fig11 = figure(11);
 set(fig11,'name','Output from NN and BlackBox');
 ax11 = axes(fig11);
-plot(ax11,t,cell2mat(yp1(1)),'r');
+plot(ax11,t,cell2mat(outputs_test),'r');
 hold on;
-plot(ax11,t,cell2mat(out_new_data(1)),'b');
+plot(ax11,t,cell2mat(target_new_data),'b');
+hold on
+plot(ax11,t,cell2mat(targets_test),'g');
+% plotresponse(cell2mat(t2),cell2mat(yp1))
 
 clear max_val max_index 
 % gensim(narx_net_closed,time_step);
