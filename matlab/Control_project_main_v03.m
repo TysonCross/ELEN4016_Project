@@ -25,13 +25,13 @@ rlocus(system);
 poles=eig(system);
 
 % state space
-[A1,B1,C1,D1] = ssdata(system);                     % two state variables
+[A1,B1,C1,D1] = ssdata(system);                 	% two state variables
 rank_sys = rank(ctrb(A1,B1));
 obs_sys = obsv(A1,C1);
 rank_obs = rank(obs_sys);
 
 % % Solution to x (displacement in time domain)
-% xt = ilaplace(X);                                   % inverse laplace
+% xt = ilaplace(X);                                	% inverse laplace
 
 % % Solve for displacement as function of time symbolically
 % syms x(t) y;
@@ -46,16 +46,16 @@ rank_obs = rank(obs_sys);
 %%% Simulink: Control_system_simulation.slx
 
 % Modelling of PID controller (Tuned)
- P = 0.159243539750473;                                         % proportional 
- I = 0.0209333117982786;                                        % integral
- D = 0.242558878110515;                                         % derivative
+ P = 0.159243539750473;                            	% proportional 
+ I = 0.0209333117982786;                           	% integral
+ D = 0.242558878110515;                            	% derivative
  N = 20.119;
-PIDsystem = P + I/s + D*(N/(1+(N/s)));                          % controller transfer function
+PIDsystem = P + I/s + D*(N/(1+(N/s)));            	% controller transfer function
 
 % Model of entire system 
- Gs = PIDsystem.*sys                                            % Open loop (combined) transfer function
- Xs = 1/s;                                                      % step input
- Ys = (Xs*Gs)/(1+Gs)                                            % output from closed loop transfer function
+ Gs = PIDsystem.*sys                              	% Open loop (combined) transfer function
+ Xs = 1/s;                                         	% step input
+ Ys = (Xs*Gs)/(1+Gs)                              	% output from closed loop transfer function
  
  % Time domain
  Distance = ilaplace(Ys);
@@ -65,21 +65,22 @@ PIDsystem = P + I/s + D*(N/(1+(N/s)));                          % controller tra
  
  %Model of the Output of PID controler
  Xs = 1/s;
- controllerEffort = (Xs-Ys)*(PIDsystem);                     %Voltage applied to the motor
+ controllerEffort = (Xs-Ys)*(PIDsystem);        	% Voltage applied to the motor
  MotorV = (ilaplace(controllerEffort,t));
- MotorC = MotorV./R;                                            %Current in the motor 
- MotorP = MotorC.*MotorV;                                        %instantanious Power
+ MotorC = MotorV./R;                               	% Current in the motor 
+ MotorP = MotorC.*MotorV;                         	% instantanious Power
  MotorCE3 = double(int(abs(MotorP),t,0,4))
- %MotorCE = int(MotorP,t,0,t,'PrincipalValue',true);               %Motor cumulative energy
+ %MotorCE = int(MotorP,t,0,t,'PrincipalValue',true); 	% Motor cumulative energy
                                                                
 
- T = 0:0.001:4;                                                   %Time matrix 
- MotorVmatrix = abs(double(subs(MotorV,t,T)));                               %voltage sampled at T
- MotorCmatrix = abs(MotorVmatrix./R);                                %
+ T = 0:0.01:20;                                   	% Time vector 
+ MotorVmatrix = abs(double(subs(MotorV,t,T)));     	% voltage sampled at T
+ MotorCmatrix = abs(MotorVmatrix./R);
  MotorPmatrix = MotorCmatrix.*MotorVmatrix;
  MotorCEmatrix = cumsum(MotorPmatrix.*0.001);
  
-%                                                               
-% %Calculate the increase in resistace due to increase in temperature. 
-% deltaT = subs(MotorCE,t,3)/(0.385*0.75264);
-% Rnew = R*(1+0.0039*(deltaT));
+% load the data simulation with stepped input voltage values
+% load('cache/IO_data.mat');
+% input = timeseries(cell2mat(in_data),t,'Name','input to blackbox');
+
+

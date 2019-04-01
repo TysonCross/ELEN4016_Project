@@ -13,7 +13,7 @@ set(figNetView,'numbertitle','off',...                            % Give figure 
 % data
 jframe = view(net_closed);
 jpanel = get(jframe,'ContentPane');
-[h1,h] = javacomponent(jpanel);
+[~,h] = javacomponent(jpanel);
 set(h, 'units','normalized', 'position',[0 0 1 1],...
     'BackgroundColor', [1 1 1],...
     'Clipping','off');

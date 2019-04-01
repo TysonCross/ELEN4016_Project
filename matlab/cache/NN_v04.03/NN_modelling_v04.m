@@ -173,6 +173,7 @@ if trained_status
     performance_closed = perform(net_closed,targets_c,outputs_closed)
 
     % figures
+    plot_netView;
     
     plot_trainPerform;
     plot_trainState;
@@ -180,9 +181,7 @@ if trained_status
     
     plot_outputClosed;
     plot_errorClosed;
-    pause(4)
 
-    plot_netView;
     
     clear max_val max_index 
 
