@@ -4,7 +4,7 @@ close all; clear all;
 
 % Phases to run
 use_cached_data = false;         % if false, generate new data
-use_cached_net = true;          % if false, generate new NARX net
+use_cached_net = false;          % if false, generate new NARX net
 do_train = true;               % if true, perform training
 recover_checkpoint = true;     % if training did not finish, use checkpoint
 archive_net = true;            % archive NN, data and figures to subfolder
