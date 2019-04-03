@@ -63,7 +63,9 @@ ylabel('',...
     'FontSize',fontSize);
 
 % Title and Annotations
-% t1 = title(figError.Name);
+abs_err = max(max(abs(y)));
+str = sprintf('Max abs error: |%d|',abs_err);
+t1 = title(str);
 
 % Legend
 % legend1 = legend;

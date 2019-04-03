@@ -291,6 +291,9 @@ sccprj/
 # Matlab code generation folders
 codegen/
 
+# Simulink caches
+*.slxc
+
 # Simulink autosave extension
 *.autosave
 
@@ -298,3 +301,6 @@ codegen/
 octave-workspace
 
 # End of https://www.gitignore.io/api/latex,matlab
+#
+Report/
+Report/*
