@@ -3,26 +3,37 @@ set(0,'ShowHiddenHandles','on'); %delete(get(0,'Children')); % close windows
 close all; clear all;
 
 % Phases to run
-use_cached_data = true;         % if false, generate new data
+use_cached_data = false;         % if false, generate new data
 use_cached_net = true;          % if false, generate new NARX net
-do_train = false;               % if true, perform training
+do_train = true;               % if true, perform training
 recover_checkpoint = false;     % if training did not finish, use checkpoint
-archive_net = false;            % archive NN, data and figures to subfolder
+archive_net = true;            % archive NN, data and figures to subfolder
 
 %% Data generation phase
 if (use_cached_data==false)
     disp('Generating and caching data...')
     
     time_step = 0.01;
-    max_voltage = 10;
-    num_entries = 1e5;
+    max_voltage = 5;
+    num_entries = 5e5;
 
-    min_time_jump = 5/time_step;
-    max_time_jump = 20/time_step;
-    i = 5;
+    i = 10;
     voltage = zeros(i,1,1)';
     while i<num_entries
-       voltage_now = rand()*(max_voltage) - (max_voltage/2) ;
+        min_time_jump = randi(5)/time_step;
+        max_time_jump = randi(30)/time_step;
+        chance = rand();
+       if (chance<0.1)
+           voltage_now = 0;
+       elseif (chance>0.1 && chance<0.15)
+           voltage_now = max_voltage;
+      elseif (chance>0.15 && chance<0.2)
+           voltage_now = -max_voltage; 
+       elseif (chance>0.2 && chance<0.3)
+           voltage_now = max(0,rand()*(max_voltage) - (max_voltage/2));
+       else
+           voltage_now = rand()*(max_voltage) - (max_voltage/2);
+       end
        time_jump = randi(max_time_jump-1) + min_time_jump;
        j = i;
        while j<(i+time_jump)
@@ -36,7 +47,7 @@ if (use_cached_data==false)
     
     voltage = voltage(1:num_entries); % clip off unwanted extra values.
     t = linspace(0,time_step*num_entries,num_entries);
-
+    
     % blackbox parameters
     System_parameters;
     
@@ -51,7 +62,7 @@ if (use_cached_data==false)
             'StopTime',string(t(end)),...
             'FixedStep', string(time_step));
     output = out_temp.output;
-
+    
     % prepare the data after simulation
     in_data = num2cell(input.Data(:)');
     target_data = num2cell(output.Data(1:end-1)');
@@ -124,7 +135,7 @@ if do_train
     end
     
     net.trainFcn =  'trainlm';
-    net.trainParam.epochs = 1000;
+    net.trainParam.epochs = 2000;
     net.trainParam.show = 10;
     net.trainParam.min_grad = 1e-10;
     net.trainParam.max_fail = 10;
@@ -209,7 +220,7 @@ if (archive_net) && (trained_status)
             export_fig(fn,figHandles(i))
        end
        gensim(net_closed,time_step);
-       fn = sprintf('%s/narx.slx',foldername);
+       fn = sprintf('%s/narx_net.slx',foldername);
        save_system(gcs,fn)
        bdclose(gcs);
        pause(6);
