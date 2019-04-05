@@ -1,13 +1,16 @@
-%%% Data generation for NN
-set(0,'ShowHiddenHandles','on'); %delete(get(0,'Children')); % close windows
-close all; clear all;
+%% Neural Net training and data generation
+% Tyson Cross       1239448
+% James Goodhead    1387118
+
+clc; close all;
 
 % Phases to run
 use_cached_data = true;         % if false, generate new data
 use_cached_net = true;          % if false, generate new NARX net
 do_train = false;               % if true, perform training
 recover_checkpoint = false;     % if training did not finish, use checkpoint
-archive_net = true;            % archive NN, data and figures to subfolder
+archive_net = false;            % archive NN, data and figures to subfolder
+make_images = false;            % generate performance figures
 
 %% Data generation phase
 if (use_cached_data==false)
@@ -166,8 +169,10 @@ if trained_status
     performance_open = perform(net,targets,outputs)
 
     % figures
-    plot_outputOpen;
-    plot_errorOpen;
+    if make_images
+        plot_outputOpen;
+        plot_errorOpen;
+    end
 
 
     %% Deployment and testing
@@ -184,16 +189,15 @@ if trained_status
     performance_closed = perform(net_closed,targets_c,outputs_closed)
 
     % figures
-    
-    plot_trainPerform;
-    plot_trainState;
-    plot_trainRegression;
-    
-    plot_outputClosed;
-    plot_errorClosed;
-    pause(4)
-
-    plot_netView;
+    if make_images
+        plot_trainPerform;
+        plot_trainState;
+        plot_trainRegression;
+        plot_outputClosed;
+        plot_errorClosed;
+        pause(4)                        % delay for java object -> figure
+        plot_netView;
+    end
     
     clear max_val max_index 
 
@@ -210,23 +214,26 @@ if (archive_net) && (trained_status)
        copyfile(currentFileName, foldername);
        copyfile('cache/NN_model.mat',foldername);
        copyfile('cache/IO_data.mat',foldername);
-       h=helpdlg('Push OK to save all open plots');
-       uiwait(h);
-       figHandles = findobj('Type', 'figure');
-       for i=1:length(figHandles)
-            figure(figHandles(i).Number);
-            fig_name = figHandles(i).Name;
-            fig_name(isspace(fig_name)==1)='_';
-            fig_name = regexprep(fig_name, '[ .,''!?()]', '');
-            fn = sprintf('%s/%s.pdf',foldername,fig_name);
-            export_fig(fn,figHandles(i))
+      if make_images
+           diag = helpdlg('Push OK to save all open plots','Export Paused');
+           uiwait(diag);
+           figHandles = findobj('Type', 'figure');
+           for i=1:length(figHandles)
+                figure(figHandles(i).Number);
+                fig_name = figHandles(i).Name;
+                fig_name(isspace(fig_name)==1)='_';
+                fig_name = regexprep(fig_name, '[ .,''!?()]', '');
+                fn = sprintf('%s/%s.pdf',foldername,fig_name);
+                export_fig(fn,figHandles(i))
+           end
+           fprintf("%d figures exported to %s\n",length(figHandles),foldername)
+           pause(6);
+           close all;
        end
        gensim(net_closed,time_step);
        fn = sprintf('%s/narx_net.slx',foldername);
        save_system(gcs,fn)
        bdclose(gcs);
-       pause(6);
-       close all;
        fprintf("Data archived in %s\n",foldername)
    else
        dprintf('WARNING: %s does not exist!\n',currentFileName);

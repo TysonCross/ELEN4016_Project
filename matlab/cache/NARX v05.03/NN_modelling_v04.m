@@ -3,9 +3,9 @@ set(0,'ShowHiddenHandles','on'); %delete(get(0,'Children')); % close windows
 close all; clear all;
 
 % Phases to run
-use_cached_data = false;         % if false, generate new data
+use_cached_data = true;         % if false, generate new data
 use_cached_net = true;          % if false, generate new NARX net
-do_train = true;               % if true, perform training
+do_train = false;               % if true, perform training
 recover_checkpoint = false;     % if training did not finish, use checkpoint
 archive_net = true;            % archive NN, data and figures to subfolder
 
@@ -210,13 +210,15 @@ if (archive_net) && (trained_status)
        copyfile(currentFileName, foldername);
        copyfile('cache/NN_model.mat',foldername);
        copyfile('cache/IO_data.mat',foldername);
+       h=helpdlg('Push OK to save all open plots');
+       uiwait(h);
        figHandles = findobj('Type', 'figure');
        for i=1:length(figHandles)
             figure(figHandles(i).Number);
             fig_name = figHandles(i).Name;
             fig_name(isspace(fig_name)==1)='_';
             fig_name = regexprep(fig_name, '[ .,''!?()]', '');
-            fn = sprintf('%s/%s.eps',foldername,fig_name);
+            fn = sprintf('%s/%s.pdf',foldername,fig_name);
             export_fig(fn,figHandles(i))
        end
        gensim(net_closed,time_step);
